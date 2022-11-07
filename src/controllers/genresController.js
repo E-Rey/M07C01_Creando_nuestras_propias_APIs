@@ -3,51 +3,17 @@ const sequelize = db.sequelize;
 
 
 const genresController = {
-    'list': async (req, res) => {
-        try {
-            let { limit } = req.query;
-            let total = await db.Genre.count();
-            let genres = await db.Genre.findAll({
-                attributes:
-                {
-                    exclude: ['created_ad', 'updated_at']
-                },
-                limit: limit ? +limit : 5
+    'list': (req, res) => {
+        db.Genre.findAll()
+            .then(genres => {
+                res.render('genresList.ejs', { genres })
             })
-            return res.status(200).json({
-                ok: true,
-                meta: {
-                    perPage: genres.length,
-                    total
-                },
-                data: genres
-            })
-        } catch (error) {
-            console.log(error)
-            return res.status(error.status || 500).json({
-                ok: false,
-                msg: error.message
-            })
-        }
     },
-    'detail': async (req, res) => {
-        try {
-            let genre = await db.Genre.findByPk(req.params.id);
-            return res.status(200).json({
-                ok:true,
-                meta: {
-                    items: 1
-                },
-                data : genre
-            })
-        } catch (error) {
-            console.log(error)
-            return res.status(error.status || 500).json({
-                ok: false,
-                msg: error.message
-            })
-        }
-        
+    'detail': (req, res) => {
+        db.Genre.findByPk(req.params.id)
+            .then(genre => {
+                res.render('genresDetail.ejs', { genre });
+            });
     }
 
 }
