@@ -1,40 +1,111 @@
-const db = require('../../database/models');
-const sequelize = db.sequelize;
+const { Op } = require("sequelize");
+const db = require("../database/models");
+const { createError } = require("../helpers");
 
 
-const genresController = {
-    'list': async (req, res) => {
-    
+
+module.exports = {
+
+    list: async (req, res) => {
+        let { limit, order = "id" } = req.query;
+        let fields = ["name", "ranking"];
         try {
-            let genres = await db.Genre.findAll()
+            if (!fields.includes(order)) {
+                throw createError(
+                    400,
+                    "Sólo se puede ordenar por 'name' o 'ranking'"
+                );
+            }
+            let total = await db.Genre.count();
+            let genres = await db.Genre.findAll({
+                attributes: {
+                    exclude: ["createdAt", "updatedAt"],
+                },
+                limit: limit ? +limit : 5,
+                order: [order],
+            });
             return res.status(200).json({
-                ok:true,
-                meta:{
-                    status : 200,
-                    total : genres.length,
-                    url : "api/genres"},
-                data : genres,
-        })
+                ok: true,
+                meta: {
+                    status: 200,
+                },
+                data: {
+                    items: genres.length,
+                    total,
+                    genres,
+                },
+            });
         } catch (error) {
             console.log(error);
+            return res.status(error.status || 500).json({
+                ok: false,
+                msg: error.message,
+            });
         }
     },
-    'detail': async (req, res) => {
-    
-            try {
-                let detail = await db.Genre.findByPk(req.params.id)
-                return res.status(200).json({
-                    ok:true,
-                    meta:{
-                        status : 200,
-                        url : "api/genres/detail"},
-                    data : detail,
-            })
-            } catch (error) {
-                console.log(error);
+    getById: async (req, res) => {
+        const { id } = req.params;
+        try {
+            if (isNaN(id)) {
+                throw createError(400, "El ID debe ser un número"); 
             }
-    }
-
-}
-
-module.exports = genresController;
+            let genre = await db.Genre.findByPk(id);
+            if (!genre) {
+                throw createError(400, "No existe un género con ese ID");
+            }
+            return res.status(200).json({
+                ok: true,
+                meta: {
+                    status: 200,
+                },
+                data: {
+                    genre,
+                    total: 1,
+                },
+            });
+        } catch (error) {
+            console.log(error);
+            return res.status(error.status || 500).json({
+                ok: false,
+                msg: error.message,
+            });
+        }
+    },
+    getByName: async (req, res) => {
+        const { name } = req.params;
+        try {
+            if (!name) {
+                throw createError(400, "El nombre es obligatorio");
+            }
+            let genre = await db.Genre.findOne({
+                where: {
+                    name: {
+                        [Op.substring]: name,
+                    },
+                },
+            });
+            if (!genre) {
+                throw createError(
+                    400,
+                    "No se encuentra un género con ese nombre"
+                );
+            }
+            return res.status(200).json({
+                ok: true,
+                meta: {
+                    status: 200,
+                },
+                data: {
+                    genre,
+                    total: 1,
+                },
+            });
+        } catch (error) {
+            console.log(error);
+            return res.status(error.status || 500).json({
+                ok: false,
+                msg: error.message,
+            });
+        }
+    },
+};
